@@ -53,13 +53,13 @@ BIWhite='\033[1;97m'      # White
 
 
 printf '%s' "$CYAN"
-printf '%s\n' ' __  __     __     __         __     __  __'
-printf '%s\n' '/\_\_\_\   /\ \   /\ \       /\ \   /\_\_\_\'
-printf '%s\n' '\/_/\_\/_  \ \ \  \ \ \____  \ \ \  \/_/\_\/_'
-printf '%s\n' '  /\_\/\_\  \ \_\  \ \_____\  \ \_\   /\_\/\_\'
-printf '%s\n' '  \/_/\/_/   \/_/   \/_____/   \/_/   \/_/\/_/'
+printf '%s\n' '    __  __     __     __         __     __  __'
+printf '%s\n' '   /\_\_\_\   /\ \   /\ \       /\ \   /\_\_\_\'
+printf '%s\n' '   \/_/\_\/_  \ \ \  \ \ \____  \ \ \  \/_/\_\/_'
+printf '%s\n' '     /\_\/\_\  \ \_\  \ \_____\  \ \_\   /\_\/\_\'
+printf '%s\n' '     \/_/\/_/   \/_/   \/_____/   \/_/   \/_/\/_/'
 printf '\n'
-printf '%s\n' "${dim}               deoxilix.github.io              "
+printf '%s\n' "${dim}                  deoxilix.github.io              "
 echo -n $reset
 
 # if [ -n "$ZSH_VERSION" ]; then
@@ -72,19 +72,25 @@ echo -n $reset
 # fi
 
 if [ -n "`$SHELL -c 'echo $ZSH_VERSION'`" ]; then
-  helixpath="/Users/$USER/.oh-my-zsh/themes/"
-  if echo -en "\n$BGreen---------------------->" && [ -n $(cp './xilix.zsh-theme' ${helixpath}) ]; then
-    printf '\r%s\n' "---------------------------------------------->${reset}"
-    echo -e "helix copied$BGreen ≫$BYellow ${helixpath} ${reset}\n"
+  helixlocalpath="/Users/$USER/.oh-my-zsh/themes/xilix.zsh-theme"
+  helixgiturl="https://github.com/deoxilix/dotxilix"
+  helixrawurl="https://raw.githubusercontent.com/deoxilix/dotxilix/master/xilix.zsh-theme"
+
+  if echo -en "\n$BGreen---------------------------->" && $(curl -s $helixrawurl > ${helixlocalpath}); then
+    printf '\r%s\n' "----------------------------------------------------->${reset}"
+    echo -e "${BCyan}Helix$reset$BGreen ≫$BYellow ${helixpath} ${reset}\n"
+    echo -n "ZSH_THEME='spaceship'" | pbcopy
   else
-    echo -e "\r$BRed---------------------------------------------->${reset}\n"
-    echo -e "helix couldnot be copied$BRed ≫$BYellow ${helixpath} ${reset}\n"
+    echo -e "\r$BRed----------------------------------------------------->${reset}"
+    echo -e "${BCyan}Helix$BRed download failed !${reset}\n"
+    $(rm -f $helixpath)
+    echo -e "Try Cloning from:\n$helixgiturl"
   fi
 elif [ -n "`$SHELL -c 'echo $BASH_VERSION'`" ]; then
-  printf '%s\n' "$BRed    ¯\_(ツ)_/¯"
+  printf '%s\n' "\r$BRed    ¯\_(ツ)_/¯"
   printf '%s\n' "${reset}where's oh-my-zsh?"
 else
-  printf '%s\n' "$BRed      ¯\(°_o)/¯"
+  printf '%s\n' "\r$BRed      ¯\(°_o)/¯"
   printf '%s\n' "${reset}What shell is this?!"
 fi
 
