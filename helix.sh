@@ -74,16 +74,16 @@ echo -n $reset
 if [ -n "`$SHELL -c 'echo $ZSH_VERSION'`" ]; then
   helixlocalpath="/Users/$USER/.oh-my-zsh/themes/xilix.zsh-theme"
   helixgiturl="https://github.com/deoxilix/dotxilix"
-  helixrawurl="https://raw.githubusercontent.com/deoxilix/dotxilix/master/xilix.zsh-theme"
+  helixrawurl="https://raw.githubusercontent.com/deoxilix/dotxilix/master/Helix/xilix.zsh-theme"
 
   if echo -en "\n$BGreen---------------------------->" && $(curl -s $helixrawurl > ${helixlocalpath}); then
     printf '\r%s\n' "----------------------------------------------------->${reset}"
-    echo -e "${BCyan}Helix$reset$BGreen ≫$BYellow ${helixpath} ${reset}\n"
+    echo -e "${BCyan}Helix$reset$BGreen ≫$BYellow ${helixlocalpath} ${reset}\n"
     echo -n "ZSH_THEME='spaceship'" | pbcopy
   else
     echo -e "\r$BRed----------------------------------------------------->${reset}"
     echo -e "${BCyan}Helix$BRed download failed !${reset}\n"
-    $(rm -f $helixpath)
+    $(rm -f $helixlocalpath)
     echo -e "Try Cloning from:\n$helixgiturl"
   fi
 elif [ -n "`$SHELL -c 'echo $BASH_VERSION'`" ]; then
