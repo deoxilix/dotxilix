@@ -60,7 +60,7 @@ printf '%s\n' '     /\_\/\_\  \ \_\  \ \_____\  \ \_\   /\_\/\_\'
 printf '%s\n' '     \/_/\/_/   \/_/   \/_____/   \/_/   \/_/\/_/'
 printf '\n'
 printf '%s\n' "${dim}                  deoxilix.github.io              "
-echo $reset
+echo -n $reset
 
 # if [ -n "$ZSH_VERSION" ]; then
 #   #  cp './xilix.zsh-theme' '~/.oh-my-zsh/themes/'
@@ -76,10 +76,10 @@ if [ -n "`$SHELL -c 'echo $ZSH_VERSION'`" ]; then
   helixgiturl="https://github.com/deoxilix/dotxilix"
   helixrawurl="https://raw.githubusercontent.com/deoxilix/dotxilix/master/Helix/xilix.zsh-theme"
 
-  if echo "\n$BGreen---------------------------->" && $(curl -s $helixrawurl > ${helixlocalpath}); then
+  if echo -en "\n$BGreen---------------------------->" && $(curl -s $helixrawurl > ${helixlocalpath}); then
     printf '\r%s\n' "----------------------------------------------------->${reset}"
-    echo "${BCyan}Helix$reset$BGreen ≫$BYellow ${helixlocalpath} ${reset}\n"
-    echo "ZSH_THEME='spaceship'" | pbcopy
+    echo -e "${BCyan}Helix$reset$BGreen ≫$BYellow ${helixlocalpath} ${reset}\n"
+    echo -n "ZSH_THEME='spaceship'" | pbcopy
   else
     echo -e "\r$BRed----------------------------------------------------->${reset}"
     echo -e "${BCyan}Helix$BRed download failed !${reset}\n"
