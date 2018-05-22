@@ -13,16 +13,23 @@ eval "$(nodenv init -)"
 export PATH="$HOME/.pyenv/bin:$PATH"
 eval "$(pyenv init -)"
 
+# export goenv path
+export PATH="$HOME/.goenv/bin:$PATH"
+eval "$(goenv init -)"
+
 # export jenv
 export PATH="$HOME/.jenv/bin:$PATH"
 eval "$(jenv init -)"
 export JAVA_HOME="/Library/Java/JavaVirtualMachines/jdk1.8.0_111.jdk/Contents/Home"
 
+# export leiningen
+export PATH="$HOME/.bin/lein:$PATH"
+
 # Path to your oh-my-zsh installation.
 export ZSH=/Users/xilix/.oh-my-zsh
 
 # THEMES
-ZSH_THEME="robbyrussell"
+# ZSH_THEME="robbyrussell"
 # ZSH_THEME='hyperzsh'
 # ZSH_THEME='lambda'
 ZSH_THEME='spaceship'
@@ -43,22 +50,33 @@ alias out="exit"
 
 # # Utility Aliases
 alias lsd="ls -ah"
+alias vpnin="osascript ~/.ssh/connect.scpt"
+alias vpnout="osascript ~/.ssh/disconnect.scpt"
 alias battery="pmset -g batt | tail -1 | cut -f2 | cut -d';' -f1"
 alias weather="weather"
 alias emacs="/Applications/Emacs.app/Contents/MacOS/Emacs . &"
 alias youtube="youtube-downloader"
+alias updatedotfiles="updatedotfiles"
+alias ngrok="./ngrok"
 
 # # Git Aliases
 alias gitlog="git log"
 alias gcm="git commit -m"
+alias status="git status"
 alias addall="git add --all"
+alias addpatch="git add --patch"
 alias grv="git remote -v"
-alias gci="git commit -m"
+alias commit="git commit -m"
+alias stash="git stash"
+alias pop="git stash pop"
+alias pull="git pull"
+alias gpr="git pull --rebase"
 alias logg="git log"
 alias master="gco master"
 alias prod="gco production"
 alias gitgraph="git log --graph"
 alias logline="git log --pretty=oneline"
+alias ggg="git grep"
 alias today="git log --since=24.hours --pretty='%h :: %an >> %s [%cr]'"
 alias mychanges="git log --author=deoxilix --pretty='%h :: %an >> %s [%cr]'"
 alias lasthash="git log -1 --pretty='%H'"
@@ -75,14 +93,18 @@ alias sketches="~/work/qt/sketches"
 alias mafia="~/work/qt/mafia-syndication"
 alias quest="~/work/qt/quest"
 alias rabbit="~/work/qt/trojan-rabbit"
+alias random="~/work/qt/random"
 alias quintype="~/work/qt"
+alias qt-connect="~/work/qt/random/bin/qt-connect"
 # navigation
-alias code="~/dimension::xilix/github-opensource/code::42 && clear"
+alias code42="~/dimension::xilix/github-opensource/code::42 && clear"
 alias xilix="~/dimension::xilix"
 alias music="~/Music"
 alias videos="~/Movies"
 alias movies="~/Movies"
 alias docs="~/Documents"
+alias downloads="~/Downloads"
+alias pics="~/Pictures"
 
 # # Typo handling
 alias cl="clear"
@@ -99,16 +121,16 @@ alias todau="today"
 function weather() {
   if [ -n "$1" ]
   then
-      curl "wttr.in/$1" | less
+      curl -s "wttr.in/$1?m2" | less
   else
-      curl "wttr.in/bangalore" | less
+      curl -s "wttr.in/bangalore?m2" | less
   fi
 }
 # Youtube downloader
 function youtube-downloader() {
   pwd | pbcopy
-  videos && youtube-dl "$1"
-  $(ls -ah)
+  videos && youtube-dl "$1" && clear
+  ls -lah
   $(command pbpaste)
 }
 # ./run
@@ -117,9 +139,26 @@ function run() {
   then
     ./run "$1" && clear
   else
-    ./run development && clear
+    ./run && clear
   fi
 }
+# Git::Stash::Pop - Versions
+function pop() {
+  if [ -n "$1" ]
+  then
+    git stash pop stash@{$1}
+  else
+    git stash pop
+  fi
+}
+# update-dotfiles
+function updatedotfiles() {
+  # cp '~/.zshrc' '~/dimesion::xilix/github-opensource/dotxilix/.zshrc'
+  cp '/Users/xilix/dimension::xilix/github-opensource/dotxilix/Helix/xilix.zsh-theme' '/Users/xilix/.oh-my-zsh/themes/spaceship.zsh-theme'
+}
+# urldecode
+alias urldecode='python -c "import sys, urllib as ul; \
+    print ul.unquote_plus(sys.argv[1])"'
 
 # Uncomment the following line to use case-sensitive completion.
 # CASE_SENSITIVE="true"
@@ -194,4 +233,7 @@ eval "$(thefuck --alias fuck)"
 
 # Adding Cask to PATH
 export PATH="$HOME/.cask/bin:$PATH"
+# Adding Brew PATH
+export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
+# Elasticsearch
 export PATH="/usr/local/opt/elasticsearch@2.4/bin:$PATH"
