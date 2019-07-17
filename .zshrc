@@ -5,9 +5,14 @@
 export PATH="$HOME/.rbenv/bin:$PATH"
 eval "$(rbenv init -)"
 
-# export nodenv path
-export PATH="$HOME/.nodenv/bin:$PATH"
-eval "$(nodenv init -)"
+## export nodenv path
+## export PATH="$HOME/.nodenv/bin:$PATH"
+## eval "$(nodenv init -)"
+
+# load nvm
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
 
 # export pyenv path
 export PATH="$HOME/.pyenv/bin:$PATH"
@@ -16,6 +21,7 @@ eval "$(pyenv init -)"
 # export goenv path
 export PATH="$HOME/.goenv/bin:$PATH"
 eval "$(goenv init -)"
+export PATH="$HOME/go/bin/:$PATH"
 
 # export jenv
 export PATH="$HOME/.jenv/bin:$PATH"
@@ -58,6 +64,7 @@ alias emacs="/Applications/Emacs.app/Contents/MacOS/Emacs . &"
 alias youtube="youtube-downloader"
 alias updatedotfiles="updatedotfiles"
 alias ngrok="./ngrok"
+alias chcl="cht-clojure"
 
 # # Git Aliases
 alias gitlog="git log"
@@ -85,6 +92,7 @@ alias lasthash="git log -1 --pretty='%H'"
 alias quinturbo="~ && itermocil qt"
 alias run="run"
 alias rspec="bundle exec rspec"
+alias ssh="vpnin && ssh"
 # Quintype
 alias bloombergquint="~/work/qt/bloomberg-quint"
 alias bq="~/work/qt/bloomberg-quint"
@@ -94,10 +102,11 @@ alias mafia="~/work/qt/mafia-syndication"
 alias quest="~/work/qt/quest"
 alias rabbit="~/work/qt/trojan-rabbit"
 alias random="~/work/qt/random"
-alias quintype="~/work/qt"
-alias qt-connect="~/work/qt/random/bin/qt-connect"
+alias qt="~/work/qt"
+alias qt-connect="vpnin && ~/work/qt/random/bin/qt-connect"
 # navigation
 alias code42="~/dimension::xilix/github-opensource/code::42 && clear"
+alias leetcode="/Users/xilix/dimension::xilix/github-opensource/code::42/ruby/733tcode"
 alias xilix="~/dimension::xilix"
 alias music="~/Music"
 alias videos="~/Movies"
@@ -126,6 +135,14 @@ function weather() {
       curl -s "wttr.in/bangalore?m2" | less
   fi
 }
+# ImdSat
+function weathersat1() {
+  # curl -s http://satellite.imd.gov.in/imc/3Dglobe_ir1.jpg > /Users/xilix/Pictures/imdweathersat.jpg \
+  # && sips --cropToHeightWidth 960 960 -Z 960 /Users/xilix/Pictures/imdweathersat.jpg \
+  curl -s "http://www.imd.gov.in/pages/crop_sat.php?x=385&y=330&w=750&h=850&src=../section/satmet/3Dasiasec_ir1.jpg" > /Users/xilix/Pictures/imdweathersat.jpg \
+  && imgcat /Users/xilix/Pictures/imdweathersat.jpg \
+  && rm -f /Users/xilix/Pictures/imdweathersat.jpg
+}
 # Youtube downloader
 function youtube-downloader() {
   pwd | pbcopy
@@ -150,6 +167,10 @@ function pop() {
   else
     git stash pop
   fi
+}
+# Cht.sh/clojure
+function cht-clojure() {
+ curl cht.sh/clojure/"$1"
 }
 # update-dotfiles
 function updatedotfiles() {
@@ -237,3 +258,4 @@ export PATH="$HOME/.cask/bin:$PATH"
 export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
 # Elasticsearch
 export PATH="/usr/local/opt/elasticsearch@2.4/bin:$PATH"
+clear
