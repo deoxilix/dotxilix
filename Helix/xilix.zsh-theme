@@ -8,7 +8,7 @@ NEWLINE='
 '
 
 # PROMPT
-SPACESHIP_PROMPT_SYMBOL="${SPACESHIP_PROMPT_SYMBOL:-​‌♆}"
+SPACESHIP_PROMPT_SYMBOL="${SPACESHIP_PROMPT_SYMBOL:-→}"
 SPACESHIP_PROMPT_ADD_NEWLINE="${SPACESHIP_PROMPT_ADD_NEWLINE:-true}"
 SPACESHIP_PROMPT_SEPARATE_LINE="${SPACESHIP_PROMPT_SEPARATE_LINE:-true}"
 SPACESHIP_PROMPT_TRUNC="${SPACESHIP_PROMPT_TRUNC:-3}"
@@ -333,10 +333,10 @@ spaceship_ruby_version() {
 spaceship_node_version() {
   [[ $SPACESHIP_NODE_SHOW == false ]] && return
 
-  if command -v nvm-prompt > /dev/null 2>&1; then
-    node_version=$(nvm-prompt i v g)
+  if command -v nvm > /dev/null 2>&1; then
+    node_version=$(nvm version | cut -f2 -d'v')
   elif command -v nodenv > /dev/null 2>&1; then
-    node_version=$(nodenv version | sed -e 's/ (set.*$//')
+    node_version=$(nodenv versions)
   else
     return
   fi
@@ -428,7 +428,7 @@ spaceship_vi_mode() {
 
 # Battery Status
 spaceship_battery() {
-  pmset -g batt | tail -1 | cut -f2 | cut -d';' -f1| cut -d'%' -f1
+  pmset -g batt | tail -1 | cut -f2 | cut -d';' -f1 | cut -d'%' -f1
 }
 spaceship_battery_status() {
   # battery = $((spaceship_battery))
@@ -455,10 +455,10 @@ spaceship_system_environment_promt() {
   spaceship_battery_status
   spaceship_ruby_version
   spaceship_node_version
-  spaceship_xcode_version
-  spaceship_swift_version
-  spaceship_venv_status
-  spaceship_pyenv_status
+  # spaceship_xcode_version
+  # spaceship_swift_version
+  # spaceship_venv_status
+  # spaceship_pyenv_status
   echo -n " ]"
 }
 
