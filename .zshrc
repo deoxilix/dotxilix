@@ -144,6 +144,7 @@ alias hoem="~"
 alias todau="today"
 
 # # FunctionalAliases
+
 # Weather
 function weather() {
   if [ -n "$1" ]
@@ -153,6 +154,7 @@ function weather() {
       curl -s "wttr.in/bangalore?m2" | less
   fi
 }
+
 # ImdSat
 function weathersat() {
   # curl -s http://satellite.imd.gov.in/imc/3Dglobe_ir1.jpg > /Users/xilix/Pictures/imdweathersat.jpg \
@@ -162,6 +164,7 @@ function weathersat() {
     && imgcat /Users/xilix/Pictures/imdweathersat.jpg \
     && rm -f /Users/xilix/Pictures/imdweathersat.jpg
 }
+
 # Youtube downloader
 function youtube-downloader() {
   pwd | pbcopy
@@ -169,6 +172,7 @@ function youtube-downloader() {
   ls -lah
   $(command pbpaste)
 }
+
 # ./run
 function run() {
   if [ -n "$1" ]
@@ -178,6 +182,7 @@ function run() {
     ./run && clear
   fi
 }
+
 # Git::Stash::Pop - Versions
 function pop() {
   if [ -n "$1" ]
@@ -187,15 +192,17 @@ function pop() {
     git stash pop
   fi
 }
+
 # Cht.sh/clojure
 function clo() {
  curl cht.sh/clojure/"$1"
 }
+
 # update-dotfiles
 function updatedotfiles() {
-  # cp '~/.zshrc' '~/dimesion::xilix/github-opensource/dotxilix/.zshrc'
   cp '/Users/xilix/dimension::xilix/github-opensource/dotxilix/Helix/xilix.zsh-theme' '/Users/xilix/.oh-my-zsh/themes/spaceship.zsh-theme'
 }
+
 # urldecode
 alias urldecode='python -c "import sys, urllib as ul; \
     print ul.unquote_plus(sys.argv[1])"'
@@ -287,6 +294,6 @@ export PATH="/usr/local/opt/elasticsearch@2.4/bin:$PATH"
 # export LDFLAGS="-L/usr/local/opt/openssl@1.1/lib"
 # export CPPFLAGS="-I/usr/local/opt/openssl@1.1/include"
 # export PKG_CONFIG_PATH="/usr/local/opt/openssl@1.1/lib/pkgconfig"
-export PATH="/usr/local/opt/libressl/bin:$PATH"
+# export PATH="/usr/local/opt/libressl/bin:$PATH"
 
 clear
