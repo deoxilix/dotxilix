@@ -9,6 +9,10 @@ eval "$(rbenv init -)"
 ## export PATH="$HOME/.nodenv/bin:$PATH"
 ## eval "$(nodenv init -)"
 
+# deno setup
+export DENO_INSTALL="/Users/xilix/.deno"
+export PATH="$DENO_INSTALL/bin:$PATH"
+
 # load nvm
 export NVM_DIR="$HOME/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
@@ -65,6 +69,8 @@ alias youtube="youtube-downloader"
 alias updatedotfiles="updatedotfiles"
 alias ngrok="./ngrok"
 alias chcl="cht-clojure"
+alias dc='docker-compose'
+alias covid19-stats='curl -s https://pastebin.com/raw/KCajNDVi | sh'
 
 # # Git Aliases
 alias gitlog="git log"
@@ -114,6 +120,12 @@ alias movies="~/Movies"
 alias docs="~/Documents"
 alias downloads="~/Downloads"
 alias pics="~/Pictures"
+## bindings
+# backward and forward word with option+left/right
+bindkey '^[^[[D' backward-word
+bindkey '^[b' backward-word
+bindkey '^[^[[C' forward-word
+bindkey '^[f' forward-word
 
 # # Typo handling
 alias cl="clear"
@@ -136,12 +148,13 @@ function weather() {
   fi
 }
 # ImdSat
-function weathersat1() {
+function weathersat() {
   # curl -s http://satellite.imd.gov.in/imc/3Dglobe_ir1.jpg > /Users/xilix/Pictures/imdweathersat.jpg \
   # && sips --cropToHeightWidth 960 960 -Z 960 /Users/xilix/Pictures/imdweathersat.jpg \
-  curl -s "http://www.imd.gov.in/pages/crop_sat.php?x=385&y=330&w=750&h=850&src=../section/satmet/3Dasiasec_ir1.jpg" > /Users/xilix/Pictures/imdweathersat.jpg \
-  && imgcat /Users/xilix/Pictures/imdweathersat.jpg \
-  && rm -f /Users/xilix/Pictures/imdweathersat.jpg
+  #curl -s "http://www.imd.gov.in/pages/crop_sat.php?x=385&y=330&w=750&h=850&src=../section/satmet/3Dasiasec_ir1.jpg" > /Users/xilix/Pictures/imdweathersat.jpg \
+  curl -s "https://mausam.imd.gov.in/Satellite/3Dasiasec_ir1.jpg" > /Users/xilix/Pictures/imdweathersat.jpg \
+    && imgcat /Users/xilix/Pictures/imdweathersat.jpg \
+    && rm -f /Users/xilix/Pictures/imdweathersat.jpg
 }
 # Youtube downloader
 function youtube-downloader() {
@@ -169,7 +182,7 @@ function pop() {
   fi
 }
 # Cht.sh/clojure
-function cht-clojure() {
+function clo() {
  curl cht.sh/clojure/"$1"
 }
 # update-dotfiles
@@ -225,7 +238,11 @@ unsetopt correct_all
 # Custom plugins may be added to ~/.oh-my-zsh/custom/plugins/
 # Example format: plugins=(rails git textmate ruby lighthouse)
 # Add wisely, as too many plugins slow down shell startup.
-plugins=(git)
+plugins=(
+    git
+    zsh-syntax-highlighting
+    # zsh-autosuggestions
+)
 
 source $ZSH/oh-my-zsh.sh
 
@@ -250,7 +267,7 @@ source $ZSH/oh-my-zsh.sh
 # export SSH_KEY_PATH="~/.ssh/rsa_id"
 
 # Setting up TheFuck
-eval "$(thefuck --alias fuck)"
+eval "$(thefuck --alias fcuk)"
 
 # Adding Cask to PATH
 export PATH="$HOME/.cask/bin:$PATH"
@@ -258,4 +275,12 @@ export PATH="$HOME/.cask/bin:$PATH"
 export PATH="/usr/local/bin:/usr/local/sbin:~/bin:$PATH"
 # Elasticsearch
 export PATH="/usr/local/opt/elasticsearch@2.4/bin:$PATH"
+
+# fixing openssl
+# export PATH="/usr/local/opt/openssl@1.1/bin:$PATH"
+# export LDFLAGS="-L/usr/local/opt/openssl@1.1/lib"
+# export CPPFLAGS="-I/usr/local/opt/openssl@1.1/include"
+# export PKG_CONFIG_PATH="/usr/local/opt/openssl@1.1/lib/pkgconfig"
+export PATH="/usr/local/opt/libressl/bin:$PATH"
+
 clear
