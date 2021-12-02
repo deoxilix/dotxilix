@@ -1,0 +1,30 @@
+alias cl="clear"
+alias cel="clear"
+alias cle="clear"
+alias lce="clear"
+alias lc="clear"
+alias gti="git"
+alias hoem="~"
+alias todau="today"
+
+alias vpnin="osascript ~/.ssh/connect.scpt"
+alias vpnout="osascript ~/.ssh/disconnect.scpt"
+export PATH=/opt/homebrew/bin:$PATH
+export PATH="/opt/homebrew/opt/postgresql@12/bin:$PATH"
+export JAVA_HOME="/Library/Java/JavaVirtualMachines/adoptopenjdk-8.jdk/Contents/Home"
+export PATH="$HOME/.bin/lein:$PATH"
+export PATH="$HOME/.rbenv/bin:$PATH"
+eval "$(rbenv init -)"
+alias emacs="/Applications/Emacs.app/Contents/MacOS/Emacs . &"
+alias qt-connect="vpnin && ~/work/random/bin/qt-connect"
+
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+
+# backward and forward word with option+left/right
+bindkey '^[^[[D' backward-word
+bindkey '^[b' backward-word
+bindkey '^[^[[C' forward-word
+bindkey '^[f' forward-word
