@@ -77,6 +77,7 @@ alias ngrok="./ngrok"
 alias chcl="cht-clojure"
 alias dc='docker-compose'
 alias covid19-stats='curl -s https://pastebin.com/raw/KCajNDVi | sh'
+alias solardisc='curl -s https://services.swpc.noaa.gov/text/discussion.txt | less'
 
 # # Git Aliases
 alias gitlog="git log"
