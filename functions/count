@@ -1,0 +1,16 @@
+count() {
+  local val=$(pbpaste)
+
+  if [[ -z "$val" ]]; then
+    echo "Error: Clipboard is empty" >&2
+    return 1
+  fi
+
+  local chars=$(echo -n "$val" | wc -c | tr -d ' ')
+  local words=$(echo "$val" | wc -w | tr -d ' ')
+  local lines=$(echo "$val" | wc -l | tr -d ' ')
+
+  echo "Lines: $lines"
+  echo "Words: $words"
+  echo "Chars: $chars"
+}

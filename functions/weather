@@ -1,0 +1,4 @@
+weather() {
+  local location="${1// /+}"
+  curl -s "wttr.in/${location}"
+}

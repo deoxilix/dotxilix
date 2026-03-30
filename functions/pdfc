@@ -1,0 +1,65 @@
+pdfc() {
+  local usage="Usage: pdfc [-layout] [-p first[-last]] <file.pdf>"
+  local layout="" first="" last="" file=""
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -layout) layout="-layout"; shift ;;
+      -p)
+        shift
+        if [[ -z "$1" ]]; then
+          echo "$usage" >&2
+          return 1
+        fi
+        if [[ "$1" == *-* ]]; then
+          first="${1%%-*}"
+          last="${1##*-}"
+        else
+          first="$1"
+          last="$1"
+        fi
+        shift
+        ;;
+      -h|--help) echo "$usage"; return 0 ;;
+      -*) echo "Error: Unknown option '$1'" >&2; echo "$usage" >&2; return 1 ;;
+      *) file="$1"; shift ;;
+    esac
+  done
+
+  # Guard: no file specified
+  if [[ -z "$file" ]]; then
+    echo "$usage" >&2
+    return 1
+  fi
+
+  # Guard: file exists
+  if [[ ! -f "$file" ]]; then
+    echo "Error: '$file' not found" >&2
+    return 1
+  fi
+
+  # Guard: pdftotext available
+  if ! command -v pdftotext >/dev/null 2>&1; then
+    echo "Error: pdftotext not found (brew install poppler)" >&2
+    return 1
+  fi
+
+  setopt local_options pipe_fail
+
+  # Build pdftotext command args
+  local args=()
+  [[ -n "$layout" ]] && args+=("$layout")
+  [[ -n "$first" ]] && args+=("-f" "$first")
+  [[ -n "$last" ]] && args+=("-l" "$last")
+  args+=("$file" "-")
+
+  # Convert and copy to clipboard
+  if ! pdftotext "${args[@]}" | pbcopy; then
+    echo "Error: Conversion failed" >&2
+    return 1
+  fi
+
+  echo "Copied to clipboard: $file"
+  count
+}

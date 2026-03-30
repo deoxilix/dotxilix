@@ -1,0 +1,184 @@
+up2x() {
+  local input output total stage p1 p2 use_temp temp_file use_esrgan=0 esrgan_scale=2 esrgan_tile=512
+  setopt local_options pipe_fail
+
+  _up2x_progress_filter() {
+    awk '
+      BEGIN {
+        width = 40
+        last = -1
+      }
+      {
+        if (match($0, /[0-9]+([.][0-9]+)?%/)) {
+          pct_str = substr($0, RSTART, RLENGTH)
+          sub(/%$/, "", pct_str)
+          pct = int(pct_str + 0.5)
+          if (pct < 0) pct = 0
+          if (pct > 100) pct = 100
+
+          if (pct != last) {
+            filled = int((pct * width) / 100)
+            bar = ""
+            for (i = 0; i < width; i++) {
+              bar = bar ((i < filled) ? "=" : " ")
+            }
+            printf "\r[%s] %3d%%", bar, pct > "/dev/stderr"
+            fflush("/dev/stderr")
+            last = pct
+          }
+          next
+        }
+
+        print $0 > "/dev/stderr"
+        fflush("/dev/stderr")
+      }
+      END {
+        if (last >= 0) {
+          printf "\n" > "/dev/stderr"
+          fflush("/dev/stderr")
+        }
+      }
+    '
+  }
+
+  # Parse -esrgan[:scale[:tile]] flag from arguments (position-independent)
+  local args=()
+  for arg in "$@"; do
+    if [[ "$arg" == -esrgan* ]]; then
+      use_esrgan=1
+      local esrgan_opts="${arg#-esrgan}"
+      if [[ -n "$esrgan_opts" ]]; then
+        esrgan_scale="${esrgan_opts#:}"
+        if [[ "$esrgan_scale" == *:* ]]; then
+          esrgan_tile="${esrgan_scale#*:}"
+          esrgan_scale="${esrgan_scale%%:*}"
+        fi
+      fi
+    else
+      args+=("$arg")
+    fi
+  done
+  set -- "${args[@]}"
+
+  if [ $# -eq 0 ]; then
+    echo "Usage:"
+    echo "  up2x filename"
+    echo "  up2x filename 100%"
+    echo "  up2x input output 400%"
+    echo "  up2x input output 200% 200%"
+    echo "  up2x -esrgan filename"
+    echo "  up2x -esrgan:4 filename"
+    echo "  up2x -esrgan:4:256 filename"
+    echo "  up2x -esrgan:4:256 input output"
+    return 1
+  elif [ $# -eq 1 ]; then
+    # Single argument: use same file for input/output, default 200%
+    input="$1"
+    output="$1"
+    use_temp=1
+    total=200
+    stage=$(echo "scale=6; sqrt($total/100)*100" | bc -l)
+    p1="${stage}%"
+    p2="${stage}%"
+  elif [ $# -eq 2 ]; then
+    if [ "$use_esrgan" -eq 1 ]; then
+      # Two arguments with -esrgan: input output
+      input="$1"
+      output="$2"
+      use_temp=0
+    else
+      # Two arguments: filename and percentage, in-place replacement
+      input="$1"
+      output="$1"
+      use_temp=1
+      total="${2%\%}"
+      if ! [[ "$total" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+        echo "Error: Invalid percentage value '$2'" >&2
+        return 1
+      fi
+      stage=$(echo "scale=6; sqrt($total/100)*100" | bc -l)
+      p1="${stage}%"
+      p2="${stage}%"
+    fi
+  elif [ $# -eq 3 ]; then
+    # Three arguments: input, output, percentage
+    input="$1"
+    output="$2"
+    use_temp=0
+    # Strip % and validate numeric
+    total="${3%\%}"
+    if ! [[ "$total" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+      echo "Error: Invalid percentage value '$3'" >&2
+      return 1
+    fi
+    stage=$(echo "scale=6; sqrt($total/100)*100" | bc -l)
+    p1="${stage}%"
+    p2="${stage}%"
+  else
+    # Four+ arguments: input, output, p1, p2
+    input="$1"
+    output="$2"
+    use_temp=0
+    p1="$3"
+    p2="$4"
+    # Validate percentage formats
+    if ! [[ "$p1" =~ ^[0-9]+\.?[0-9]*%?$ ]] || ! [[ "$p2" =~ ^[0-9]+\.?[0-9]*%?$ ]]; then
+      echo "Error: Invalid percentage format" >&2
+      return 1
+    fi
+  fi
+
+  # Validate input file exists
+  if [ ! -f "$input" ]; then
+    echo "Error: Input file '$input' not found" >&2
+    return 1
+  fi
+
+  # Use temporary file for in-place replacement to prevent data loss
+  if [ "$use_temp" -eq 1 ]; then
+    temp_file="${output}.up2x.tmp.$$"
+    output="$temp_file"
+  fi
+
+  # Run upscaler
+  if [ "$use_esrgan" -eq 1 ]; then
+    # Use Real-ESRGAN (AI-based, fixed 2x)
+    if ! command -v realesrgan-ncnn-vulkan >/dev/null 2>&1; then
+      [ -n "$temp_file" ] && rm -f "$temp_file"
+      echo "Error: realesrgan-ncnn-vulkan not found" >&2
+      return 1
+    fi
+    if ! realesrgan-ncnn-vulkan -m "$HOME/bin/realesrgan/models" -i "$input" -o "$output" -s "$esrgan_scale" -n realesrgan-x4plus -t "$esrgan_tile" 2>&1 | _up2x_progress_filter; then
+      [ -n "$temp_file" ] && rm -f "$temp_file"
+      echo "Error: Real-ESRGAN processing failed" >&2
+      return 1
+    fi
+  else
+    # Run ImageMagick
+    if ! magick "$input" \
+      -monitor \
+      -colorspace RGB \
+      -filter Lanczos \
+      -distort Resize "$p1" \
+      -unsharp 0x0.6+0.3+0.02 \
+      -distort Resize "$p2" \
+      -unsharp 0x0.8+0.4+0.02 \
+      -colorspace sRGB \
+      -define jpeg:dct-method=float \
+      -define jpeg:optimize-coding=true \
+      -sigmoidal-contrast 1.2x50% \
+      -quality 94 \
+      "$output" 2>&1 | _up2x_progress_filter; then
+      # Clean up temp file on failure
+      [ -n "$temp_file" ] && rm -f "$temp_file"
+      echo "Error: ImageMagick processing failed" >&2
+      return 1
+    fi
+  fi
+
+  # Move temp file to original location if using temp
+  if [ "$use_temp" -eq 1 ]; then
+    mv "$temp_file" "$input"
+  fi
+}
+

@@ -1,0 +1,25 @@
+cap() {
+  local usage="Usage: cap [u(pper)|l(ower)|t(itle)]"
+  local val=$(pbpaste)
+
+  # Guard: empty clipboard
+  if [[ -z "$val" ]]; then
+    echo "Error: Clipboard is empty" >&2
+    return 1
+  fi
+
+  # Guard: too many args
+  if [[ $# -gt 1 ]]; then
+    echo "$usage" >&2
+    return 1
+  fi
+
+  case $1 in
+    u) echo -n "${val:u}" | pbcopy ;;
+    l) echo -n "${val:l}" | pbcopy ;;
+    t) echo -n "${(C)val}" | pbcopy ;;
+    *) echo "$usage" >&2; return 1 ;;
+  esac
+
+  echo "Clipboard updated to: $(pbpaste)"
+}

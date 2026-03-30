@@ -1,0 +1,15 @@
+myip() {
+  local public local_ip
+
+  public=$(curl -sf https://api.ipify.org 2>/dev/null)
+  if [[ -z "$public" ]]; then
+    public="unavailable"
+  fi
+
+  local_ip=$(ipconfig getifaddr en0 2>/dev/null \
+    || ipconfig getifaddr en1 2>/dev/null \
+    || echo "unavailable")
+
+  echo "Public:  $public"
+  echo "Local:   $local_ip"
+}

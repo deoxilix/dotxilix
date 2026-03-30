@@ -1,0 +1,21 @@
+stripimg() {
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: strip <file> [file...]" >&2
+    return 1
+  fi
+
+  local file
+  for file in "$@"; do
+    if [[ ! -f "$file" ]]; then
+      echo "Error: '$file' not found" >&2
+      continue
+    fi
+
+    if ! magick "$file" -strip "$file" 2>/dev/null; then
+      echo "Error: Failed to strip '$file'" >&2
+      continue
+    fi
+
+    echo "Stripped: $file"
+  done
+}

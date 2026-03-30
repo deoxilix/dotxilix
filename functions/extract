@@ -1,0 +1,36 @@
+extract() {
+  if [[ $# -eq 0 ]]; then
+    echo "Usage: extract <archive> [archive...]" >&2
+    return 1
+  fi
+
+  local file
+  for file in "$@"; do
+    if [[ ! -f "$file" ]]; then
+      echo "Error: '$file' not found" >&2
+      continue
+    fi
+
+    case "$file" in
+      *.tar.gz|*.tgz)    tar -xzf "$file" ;;
+      *.tar.bz2|*.tbz2)  tar -xjf "$file" ;;
+      *.tar.xz|*.txz)    tar -xJf "$file" ;;
+      *.tar.zst)         tar --zstd -xf "$file" ;;
+      *.tar)             tar -xf "$file" ;;
+      *.zip)             unzip "$file" ;;
+      *.gz)              gunzip "$file" ;;
+      *.bz2)             bunzip2 "$file" ;;
+      *.xz)              unxz "$file" ;;
+      *.zst)             zstd -d "$file" ;;
+      *.7z)              7z x "$file" ;;
+      *.rar)             unrar x "$file" ;;
+      *.Z)               uncompress "$file" ;;
+      *)
+        echo "Error: Unknown archive format for '$file'" >&2
+        continue
+        ;;
+    esac
+
+    echo "Extracted: $file"
+  done
+}

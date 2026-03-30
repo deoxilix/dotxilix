@@ -1,0 +1,75 @@
+mkpdf() {
+  local usage="Usage: mkpdf [-o output.pdf] [input_file]"
+  local outfile="" file="" from_format="markdown"
+
+  # Parse arguments
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      -o)
+        shift
+        if [[ -z "$1" ]]; then
+          echo "$usage" >&2
+          return 1
+        fi
+        outfile="$1"
+        shift
+        ;;
+      -h|--help) echo "$usage"; return 0 ;;
+      -*) echo "Error: Unknown option '$1'" >&2; echo "$usage" >&2; return 1 ;;
+      *) file="$1"; shift ;;
+    esac
+  done
+
+  # Guard: pandoc available
+  if ! command -v pandoc >/dev/null 2>&1; then
+    echo "Error: pandoc not found (brew install pandoc)" >&2
+    return 1
+  fi
+
+  setopt local_options pipe_fail
+
+  if [[ -n "$file" ]]; then
+    # File mode
+    if [[ ! -f "$file" ]]; then
+      echo "Error: '$file' not found" >&2
+      return 1
+    fi
+
+    # Detect format from extension
+    case "${file:e:l}" in
+      md|markdown) from_format="markdown" ;;
+      txt)         from_format="plain" ;;
+      html|htm)    from_format="html" ;;
+      rst)         from_format="rst" ;;
+      org)         from_format="org" ;;
+      *)           from_format="markdown" ;;
+    esac
+
+    [[ -z "$outfile" ]] && outfile="${file:r}.pdf"
+
+    if ! pandoc --from "$from_format" -o "$outfile" "$file"; then
+      echo "Error: Conversion failed" >&2
+      return 1
+    fi
+
+    # Copy input content to clipboard for count
+    pbcopy < "$file"
+  else
+    # Clipboard mode
+    local val=$(pbpaste)
+    if [[ -z "$val" ]]; then
+      echo "Error: Clipboard is empty" >&2
+      return 1
+    fi
+
+    [[ -z "$outfile" ]] && outfile="clipboard.pdf"
+
+    if ! echo "$val" | pandoc --from markdown -o "$outfile"; then
+      echo "Error: Conversion failed" >&2
+      return 1
+    fi
+  fi
+
+  echo "Created: $outfile"
+  count
+}

@@ -1,0 +1,25 @@
+cpf() {
+  if [[ $# -ne 1 ]]; then
+    printf 'Usage: cpf <file>\n' >&2
+    return 1
+  fi
+
+  local path="$1"
+
+  if [[ ! -e "$path" ]]; then
+    printf "Error: '%s' not found\n" "$path" >&2
+    return 1
+  fi
+
+  local abs_path
+  abs_path="$(cd -- "$(dirname -- "$path")" && pwd -P)/$(basename -- "$path")" || return 1
+
+  osascript - "$abs_path" <<'APPLESCRIPT' >/dev/null
+on run argv
+  set thePath to item 1 of argv
+  set the clipboard to POSIX file thePath
+end run
+APPLESCRIPT
+
+  printf 'Copied: %s\n' "$abs_path"
+}

@@ -1,0 +1,320 @@
+#!/usr/bin/env zsh
+# gputop - htop-style GPU monitor for Apple Silicon
+# Usage: gputop [-i interval_ms] [-h]
+# Requires: sudo (for powermetrics)
+
+setopt LOCAL_OPTIONS NO_MONITOR 2>/dev/null
+
+# ── Config ──────────────────────────────────────────────
+typeset -i INTERVAL=1000
+typeset -i BAR_WIDTH=40
+typeset -i HISTORY_LEN=60
+typeset -a UTIL_HISTORY=()
+typeset -a POWER_HISTORY=()
+typeset -i MAX_POWER_SEEN=1
+typeset CHIP_NAME="$(sysctl -n machdep.cpu.brand_string 2>/dev/null || echo 'Apple Silicon')"
+
+# ── Colors (256-color) ──────────────────────────────────
+C_RESET=$'\e[0m'
+C_BOLD=$'\e[1m'
+C_DIM=$'\e[37m'
+C_GREEN=$'\e[38;5;35m'
+C_YELLOW=$'\e[38;5;220m'
+C_RED=$'\e[38;5;196m'
+C_CYAN=$'\e[38;5;45m'
+C_MAGENTA=$'\e[38;5;135m'
+C_WHITE=$'\e[38;5;255m'
+C_BG_BAR=$'\e[48;5;236m'
+C_BG_FILL_LO=$'\e[48;5;35m'
+C_BG_FILL_MED=$'\e[48;5;220m'
+C_BG_FILL_HI=$'\e[48;5;196m'
+C_BORDER=$'\e[38;5;147m'
+
+# ── Parse args ──────────────────────────────────────────
+while getopts "i:h" opt; do
+  case $opt in
+    i) INTERVAL=$OPTARG ;;
+    h)
+      echo "Usage: gputop [-i interval_ms]"
+      echo "  -i  Sample interval in milliseconds (default: 1000)"
+      echo "  -h  Show this help"
+      return 0 2>/dev/null || exit 0
+      ;;
+  esac
+done
+
+# ── Helpers ─────────────────────────────────────────────
+_bar_color() {
+  if (( $1 > 75 )); then
+    echo -n "$C_BG_FILL_HI"
+  elif (( $1 > 40 )); then
+    echo -n "$C_BG_FILL_MED"
+  else
+    echo -n "$C_BG_FILL_LO"
+  fi
+}
+
+_text_color() {
+  if (( $1 > 75 )); then
+    echo -n "$C_RED"
+  elif (( $1 > 40 )); then
+    echo -n "$C_YELLOW"
+  else
+    echo -n "$C_GREEN"
+  fi
+}
+
+draw_bar() {
+  typeset label=$1 pct_raw=$2 suffix=$3
+  typeset -i pct_int=${pct_raw%.*}
+  (( pct_int < 0 )) && pct_int=0
+  (( pct_int > 100 )) && pct_int=100
+  typeset -i filled=$(( (pct_int * BAR_WIDTH) / 100 ))
+  typeset -i empty=$(( BAR_WIDTH - filled ))
+
+  printf "  ${C_BOLD}${C_WHITE}%-22s${C_RESET}" "$label"
+  printf "${C_BORDER}[${C_RESET}"
+
+  if (( filled > 0 )); then
+    printf "$(_bar_color $pct_int)"
+    printf "%${filled}s" "" | tr ' ' '▊'
+    printf "${C_RESET}"
+  fi
+  if (( empty > 0 )); then
+    printf "${C_BG_BAR}"
+    printf "%${empty}s" ""
+    printf "${C_RESET}"
+  fi
+
+  printf "${C_BORDER}]${C_RESET} "
+  printf "$(_text_color $pct_int)${C_BOLD}%6s%%${C_RESET}" "$pct_raw"
+  [[ -n "$suffix" ]] && printf "  ${C_DIM}%s${C_RESET}" "$suffix"
+  echo
+}
+
+draw_mini_bar() {
+  typeset label=$1 pct_raw=$2
+  typeset -i pct_int=${pct_raw%.*}
+  (( pct_int < 0 )) && pct_int=0
+  (( pct_int > 100 )) && pct_int=100
+  typeset -i mini_width=20
+  typeset -i filled=$(( (pct_int * mini_width) / 100 ))
+  typeset -i empty=$(( mini_width - filled ))
+
+  printf "    ${C_CYAN}%-12s${C_RESET}" "$label"
+  printf "${C_BORDER}[${C_RESET}"
+  if (( filled > 0 )); then
+    printf "$(_bar_color $pct_int)"
+    printf "%${filled}s" "" | tr ' ' '▊'
+    printf "${C_RESET}"
+  fi
+  if (( empty > 0 )); then
+    printf "${C_BG_BAR}"
+    printf "%${empty}s" ""
+    printf "${C_RESET}"
+  fi
+  printf "${C_BORDER}]${C_RESET} "
+  printf "$(_text_color $pct_int)%5s%%${C_RESET}" "$pct_raw"
+  echo
+}
+
+sparkline() {
+  typeset -a vals=("${(@P)1}")
+  typeset -a blocks=(▁ ▂ ▃ ▄ ▅ ▆ ▇ █)
+  typeset -i max=1 vi=0 idx=0
+
+  for v in "${vals[@]}"; do
+    vi=${v%.*}
+    (( vi > max )) && max=$vi
+  done
+
+  typeset out=""
+  for v in "${vals[@]}"; do
+    vi=${v%.*}
+    idx=$(( (vi * 7) / (max > 0 ? max : 1) ))
+    (( idx > 7 )) && idx=7
+    (( idx < 0 )) && idx=0
+    out+="${blocks[$((idx + 1))]}"
+  done
+  echo -n "$out"
+}
+
+# ── Cleanup ─────────────────────────────────────────────
+typeset PM_PID=""
+typeset TMPFILE=""
+
+_gputop_cleanup() {
+  printf '\e[?25h'
+  printf '\e[?1049l'
+  if [[ -n "$PM_PID" ]]; then
+    # Kill the whole process group — no sudo needed for our own children
+    kill -- -"$PM_PID" 2>/dev/null
+    kill "$PM_PID" 2>/dev/null
+    wait "$PM_PID" 2>/dev/null
+  fi
+  [[ -n "$TMPFILE" ]] && rm -f "$TMPFILE"
+}
+trap _gputop_cleanup EXIT INT TERM HUP
+
+# ── Check sudo ──────────────────────────────────────────
+if ! sudo -n true 2>/dev/null; then
+  echo "${C_BOLD}gputop${C_RESET} requires sudo for powermetrics."
+  echo "Authenticating..."
+  sudo -v || { echo "sudo authentication failed."; return 1 2>/dev/null || exit 1; }
+fi
+
+# ── Main loop ───────────────────────────────────────────
+printf '\e[?1049h'
+printf '\e[?25l'
+
+TMPFILE=$(mktemp /tmp/gputop.XXXXXX)
+
+# Start powermetrics — redirect ALL output to file, silence everything
+sudo powermetrics --samplers gpu_power -i "$INTERVAL" -n -1 > "$TMPFILE" 2>/dev/null &
+PM_PID=$!
+disown $PM_PID 2>/dev/null
+
+# Wait for first sample
+sleep 2
+
+typeset -i sample_count=0
+typeset LAST_CONTENT=""
+typeset content="" gpu_freq="" gpu_active="" gpu_idle="" gpu_power=""
+typeset residency_line="" pairs="" pair="" f="" p="" max_freq="" key=""
+typeset -a freq_labels=() freq_pcts=()
+typeset -i pi=0 COLS=80 remaining=0 idx=0 watts_whole=0 watts_frac=0
+
+while true; do
+  # Read only the last sample block
+  content="$(tail -20 "$TMPFILE" 2>/dev/null)"
+
+  if [[ "$content" == "$LAST_CONTENT" || -z "$content" ]]; then
+    sleep 0.3
+    continue
+  fi
+  LAST_CONTENT="$content"
+
+  # ── Parse GPU data ──────────────────────────────────
+  gpu_freq="$(echo "$content" | grep -oE 'GPU HW active frequency: [0-9]+' | tail -1 | grep -oE '[0-9]+$')"
+  gpu_active="$(echo "$content" | grep 'GPU HW active residency:' | tail -1 | sed 's/GPU HW active residency:[[:space:]]*//' | grep -oE '^[0-9.]+')"
+  gpu_idle="$(echo "$content" | grep 'GPU idle residency:' | tail -1 | grep -oE '[0-9.]+')"
+  gpu_power="$(echo "$content" | grep 'GPU Power:' | tail -1 | grep -oE '[0-9]+')"
+
+  # Parse per-frequency residencies
+  residency_line="$(echo "$content" | grep 'GPU HW active residency:' | tail -1)"
+  freq_labels=()
+  freq_pcts=()
+
+  if [[ -n "$residency_line" ]]; then
+    pairs="$(echo "$residency_line" | grep -oE '[0-9]+ MHz:[[:space:]]*[0-9.]+%')"
+    while IFS= read -r pair; do
+      [[ -z "$pair" ]] && continue
+      f=${pair%% MHz:*}
+      p=${pair##*: }
+      p=${p%\%}
+      f=${f// /}
+      p=${p// /}
+      freq_labels+=("${f} MHz")
+      freq_pcts+=("$p")
+    done <<< "$pairs"
+  fi
+
+  # ── Update history ──────────────────────────────────
+  [[ -n "$gpu_active" ]] && UTIL_HISTORY+=("$gpu_active")
+  (( ${#UTIL_HISTORY} > HISTORY_LEN )) && UTIL_HISTORY=("${UTIL_HISTORY[@]:1}")
+
+  [[ -n "$gpu_power" ]] && POWER_HISTORY+=("$gpu_power")
+  (( ${#POWER_HISTORY} > HISTORY_LEN )) && POWER_HISTORY=("${POWER_HISTORY[@]:1}")
+  pi=${gpu_power:-0}
+  (( pi > MAX_POWER_SEEN )) && MAX_POWER_SEEN=$pi
+
+  sample_count+=1
+
+  # ── Terminal size ───────────────────────────────────
+  COLS=$(tput cols 2>/dev/null || echo 80)
+  (( COLS < 60 )) && COLS=60
+  BAR_WIDTH=$(( COLS - 38 ))
+  (( BAR_WIDTH < 20 )) && BAR_WIDTH=20
+  (( BAR_WIDTH > 60 )) && BAR_WIDTH=60
+
+  # ── Draw ────────────────────────────────────────────
+  printf '\e[H\e[2J'
+
+  echo
+  remaining=$(( COLS - 55 ))
+  printf "  ${C_BORDER}╭─${C_RESET} ${C_BOLD}${C_MAGENTA}⬡ GPU Monitor${C_RESET} ${C_DIM}─ ${CHIP_NAME} ─ ${INTERVAL}ms ─ #${sample_count}${C_RESET}"
+  if (( remaining > 0 )); then
+    printf " ${C_BORDER}"
+    printf '─%.0s' {1..$remaining}
+    printf "╮${C_RESET}"
+  fi
+  echo; echo
+
+  # Active frequency
+  printf "  ${C_BOLD}${C_WHITE}Active Frequency:     ${C_RESET}"
+  printf "${C_BOLD}${C_CYAN}%s MHz${C_RESET}" "${gpu_freq:-—}"
+  if (( ${#freq_labels} > 0 )); then
+    max_freq="${freq_labels[-1]%% *}"
+    [[ -n "$max_freq" && -n "$gpu_freq" ]] && printf "  ${C_DIM}/ %s MHz max${C_RESET}" "$max_freq"
+  fi
+  echo; echo
+
+  draw_bar "GPU Utilization:" "${gpu_active:-0}" ""
+  draw_bar "GPU Idle:" "${gpu_idle:-0}" ""
+  echo
+
+  # Power
+  printf "  ${C_BOLD}${C_WHITE}Power Draw:           ${C_RESET}"
+  if [[ -n "$gpu_power" ]]; then
+    if (( gpu_power >= 1000 )); then
+      watts_whole=$(( gpu_power / 1000 ))
+      watts_frac=$(( (gpu_power % 1000) / 10 ))
+      printf "${C_BOLD}${C_YELLOW}%d.%02d W${C_RESET}" "$watts_whole" "$watts_frac"
+    else
+      printf "${C_BOLD}${C_GREEN}%s mW${C_RESET}" "$gpu_power"
+    fi
+    printf "  ${C_DIM}(peak: %s mW)${C_RESET}" "$MAX_POWER_SEEN"
+  else
+    printf "${C_DIM}—${C_RESET}"
+  fi
+  echo; echo
+
+  # Sparklines
+  if (( ${#UTIL_HISTORY} > 1 )); then
+    printf "  ${C_BOLD}${C_WHITE}Utilization History:${C_RESET}  ${C_GREEN}"
+    sparkline UTIL_HISTORY
+    printf "${C_RESET}\n"
+  fi
+  if (( ${#POWER_HISTORY} > 1 )); then
+    printf "  ${C_BOLD}${C_WHITE}Power History:${C_RESET}        ${C_YELLOW}"
+    sparkline POWER_HISTORY
+    printf "${C_RESET}\n"
+  fi
+  echo
+
+  # Frequency residency
+  printf "  ${C_BORDER}├─${C_RESET} ${C_BOLD}${C_WHITE}Frequency Residency${C_RESET}\n"
+  for idx in {1..${#freq_labels}}; do
+    [[ -z "${freq_labels[$idx]}" || -z "${freq_pcts[$idx]}" ]] && continue
+    [[ "${freq_pcts[$idx]}" == "0" || "${freq_pcts[$idx]}" == "0.0" || "${freq_pcts[$idx]}" == "0.00" ]] && continue
+    draw_mini_bar "${freq_labels[$idx]}" "${freq_pcts[$idx]}"
+  done
+  echo
+
+  # Footer
+  printf "  ${C_BORDER}╰─${C_RESET} ${C_DIM}Press ${C_WHITE}q${C_DIM} or ${C_WHITE}Ctrl-C${C_DIM} to quit${C_RESET}"
+  remaining=$(( COLS - 35 ))
+  if (( remaining > 0 )); then
+    printf " ${C_BORDER}"
+    printf '─%.0s' {1..$remaining}
+    printf "╯${C_RESET}"
+  fi
+  echo
+
+  # Wait for next sample or quit
+  key=""
+  read -t $(( (INTERVAL / 1000) + 1 )) -k 1 key 2>/dev/null
+  if [[ "$key" == "q" || "$key" == "Q" ]]; then
+    break
+  fi
+done

@@ -1,0 +1,8 @@
+cheat() {
+  if [[ -z "$1" ]]; then
+    echo "Usage: cheat <term>" >&2
+    return 1
+  fi
+
+  curl -s "cheat.sh/$1" | less -R
+}

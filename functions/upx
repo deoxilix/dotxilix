@@ -1,0 +1,97 @@
+upx() {
+  local input output total p1 p2 use_temp temp_file
+  local mode="single"  # single total resize, unless user passes explicit p1+p2
+
+  if [ $# -eq 0 ]; then
+    echo "Usage:"
+    echo "  up2x filename"
+    echo "  up2x filename 200%"
+    echo "  up2x input output 400%"
+    echo "  up2x input output 140% 140%   # explicit two-step"
+    return 1
+  elif [ $# -eq 1 ]; then
+    input="$1"; output="$1"; use_temp=1
+    total=200
+  elif [ $# -eq 2 ]; then
+    input="$1"; output="$1"; use_temp=1
+    total="${2%\%}"
+    if ! [[ "$total" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+      echo "Error: Invalid percentage value '$2'" >&2
+      return 1
+    fi
+  elif [ $# -eq 3 ]; then
+    input="$1"; output="$2"; use_temp=0
+    total="${3%\%}"
+    if ! [[ "$total" =~ ^[0-9]+\.?[0-9]*$ ]]; then
+      echo "Error: Invalid percentage value '$3'" >&2
+      return 1
+    fi
+  else
+    # Four+ args: explicit p1, p2
+    input="$1"; output="$2"; use_temp=0
+    p1="$3"; p2="$4"
+    mode="two"
+    if ! [[ "$p1" =~ ^[0-9]+\.?[0-9]*%?$ ]] || ! [[ "$p2" =~ ^[0-9]+\.?[0-9]*%?$ ]]; then
+      echo "Error: Invalid percentage format" >&2
+      return 1
+    fi
+  fi
+
+  if [ ! -f "$input" ]; then
+    echo "Error: Input file '$input' not found" >&2
+    return 1
+  fi
+
+  if [ "$use_temp" -eq 1 ]; then
+    temp_file="${output}.up2x.tmp.$$"
+    output="$temp_file"
+  fi
+
+  # Build the ImageMagick op based on mode
+  if [ "$mode" = "single" ]; then
+    # Single-pass upscale (best default for 2x+)
+    if ! magick "$input" \
+      -auto-orient \
+      -set colorspace sRGB -colorspace sRGB \
+      -colorspace RGB \
+      -filter Lanczos -define filter:blur=0.92 \
+      -resize "${total}%" \
+      -unsharp 0x0.9+0.55+0.03 \
+      -sigmoidal-contrast 1.1x50% \
+      -colorspace sRGB -set colorspace sRGB \
+      -sampling-factor 4:4:4 \
+      -define jpeg:dct-method=float \
+      -define jpeg:optimize-coding=true \
+      -quality 92 \
+      "$output"; then
+      [ -n "$temp_file" ] && rm -f "$temp_file"
+      echo "Error: ImageMagick processing failed" >&2
+      return 1
+    fi
+  else
+    # Two-pass only when explicitly requested
+    if ! magick "$input" \
+      -auto-orient \
+      -set colorspace sRGB -colorspace sRGB \
+      -colorspace RGB \
+      -filter Lanczos -define filter:blur=0.94 \
+      -resize "$p1" \
+      -resize "$p2" \
+      -unsharp 0x0.9+0.55+0.03 \
+      -sigmoidal-contrast 1.1x50% \
+      -colorspace sRGB -set colorspace sRGB \
+      -sampling-factor 4:4:4 \
+      -define jpeg:dct-method=float \
+      -define jpeg:optimize-coding=true \
+      -quality 92 \
+      "$output"; then
+      [ -n "$temp_file" ] && rm -f "$temp_file"
+      echo "Error: ImageMagick processing failed" >&2
+      return 1
+    fi
+  fi
+
+  if [ "$use_temp" -eq 1 ]; then
+    mv "$temp_file" "$input"
+  fi
+}
