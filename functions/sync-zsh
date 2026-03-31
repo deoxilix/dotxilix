@@ -1,5 +1,5 @@
 sync-zsh() {
-  local source_dir destination target_file file
+  local source_dir destination target_file file only
 
   source_dir="$PWD"
   destination="~/.zsh/functions"
@@ -8,14 +8,22 @@ sync-zsh() {
     case "$1" in
       --to)
         if [[ $# -lt 2 ]]; then
-          printf 'Usage: sync-zsh [--to <destination>]\n' >&2
+          printf 'Usage: sync-zsh [--to <destination>] [--only <name>]\n' >&2
           return 1
         fi
         destination="$2"
         shift 2
         ;;
+      --only)
+        if [[ $# -lt 2 ]]; then
+          printf 'Usage: sync-zsh [--to <destination>] [--only <name>]\n' >&2
+          return 1
+        fi
+        only="$2"
+        shift 2
+        ;;
       *)
-        printf 'Usage: sync-zsh [--to <destination>]\n' >&2
+        printf 'Usage: sync-zsh [--to <destination>] [--only <name>]\n' >&2
         return 1
         ;;
     esac
@@ -30,8 +38,16 @@ sync-zsh() {
 
   mkdir -p "$destination" || return 1
 
+  if [[ -n "$only" ]]; then
+    if [[ ! -f "$source_dir/$only" ]]; then
+      printf "Error: function '%s' not found in '%s'\n" "$only" "$source_dir" >&2
+      return 1
+    fi
+  fi
+
   for file in "$source_dir"/*; do
     [[ -f "$file" ]] || continue
+    [[ -n "$only" && "${file:t}" != "$only" ]] && continue
 
     target_file="$destination/${file:t}"
 
